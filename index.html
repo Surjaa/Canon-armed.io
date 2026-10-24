@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Canon Armed</title>
+  <meta name="description" content="Stop the alien drones before they reach your cannon. Three levels: Normal, Medium and Hard.">
+  <link rel="icon" href="assets/canon.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap 5 (layout and base components) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <!-- Three-colour theme: primary, secondary and text, on black (dark) or white (light). Placed after Bootstrap so its body rule wins. -->
+  <style>
+    :root { --bg: #000000; --primary: #4fb3ff; --secondary: #ff4fa3; --text: #ffffff; color-scheme: dark; }
+    @media (prefers-color-scheme: light) {
+      :root:not([data-theme="dark"]) { --bg: #ffffff; --primary: #0067d6; --secondary: #d6246e; --text: #000000; color-scheme: light; }
+    }
+    :root[data-theme="light"] { --bg: #ffffff; --primary: #0067d6; --secondary: #d6246e; --text: #000000; color-scheme: light; }
+    body { background: var(--bg); color: var(--text); }
+  </style>
+  <!-- JSS (theme styles) -->
+  <script src="https://cdn.jsdelivr.net/npm/jss@10.10.0/dist/jss.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jss-preset-default@10.10.0/dist/jss-preset-default.min.js"></script>
+  <!-- Three.js (3D) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="stage" aria-hidden="true" style="position:fixed;top:0;left:0;width:100%;height:100%;display:block;z-index:0"></canvas>
+  <div id="vignette" data-style="vignette" aria-hidden="true"></div>
+  <div id="toast" data-style="toast" role="status" aria-live="polite"></div>
+
+  <!-- Top bar: score, wave, lives, buttons -->
+  <header id="hud" class="container-fluid px-3 pt-3 d-none" data-style="hud" aria-label="Game status">
+    <div class="d-flex justify-content-between align-items-start gap-2">
+      <div data-style="hudCard">
+        <div data-style="stat">
+          <span class="label">Score</span>
+          <span id="hud-score" class="value">0</span>
+        </div>
+        <div data-style="stat statBest">
+          <span class="label">Best</span>
+          <span id="hud-best">0</span>
+        </div>
+      </div>
+
+      <div class="text-center" data-style="hudCard">
+        <div id="hud-wave" data-style="waveLabel">Wave 1</div>
+        <div id="hud-lives" data-style="lives" aria-label="Lives"></div>
+        <div id="hud-mult" data-style="mult">x1</div>
+        <div id="hud-combo" data-style="waveLabel" style="font-size:11px;color:var(--primary);min-height:14px"></div>
+      </div>
+
+      <div class="d-flex flex-column gap-2 align-items-end" style="pointer-events:none">
+        <div class="d-flex gap-2">
+          <button id="btn-sound" type="button" class="btn" data-style="iconBtn" aria-label="Sound on" aria-pressed="false">
+            <svg class="icon-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>
+            <svg class="icon-off d-none" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 12A4.5 4.5 0 0 0 14 8v2.2l2.45 2.45c.03-.2.05-.42.05-.65zM19 12c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.8 8.8 0 0 0 21 12c0-4.28-3-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a8.99 8.99 0 0 0 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+          </button>
+          <button id="btn-pause" type="button" class="btn" data-style="iconBtn" aria-label="Pause">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+          </button>
+        </div>
+        <button id="btn-auto" type="button" class="btn" data-style="autoBtn" aria-pressed="true">Auto fire: on</button>
+      </div>
+    </div>
+    <div id="hud-power" data-style="chipRow"></div>
+  </header>
+
+  <!-- Main menu -->
+  <section id="panel-menu" class="d-none" data-style="overlay" aria-labelledby="menu-title">
+    <div data-style="glass">
+      <img src="assets/canon.png" alt="" width="56" height="77" data-style="emblem">
+      <p data-style="eyebrow">Defend the sector</p>
+      <h1 id="menu-title" data-style="title">Canon<br>Armed</h1>
+      <p data-style="lead">Stop the alien drones before they reach your cannon.</p>
+
+      <p data-style="sectionLabel">Choose a level</p>
+      <div data-style="diffGrid" role="group" aria-label="Difficulty">
+        <button type="button" class="btn" data-diff="normal" data-style="diffCard diffEasy" aria-pressed="false">
+          <span><span class="name">NORMAL</span><span class="sub">3 lives &middot; slower swarms</span></span>
+          <span class="tag">EASY</span>
+        </button>
+        <button type="button" class="btn" data-diff="medium" data-style="diffCard diffMed" aria-pressed="false">
+          <span><span class="name">MEDIUM</span><span class="sub">2 lives &middot; big swarms</span></span>
+          <span class="tag">STANDARD</span>
+        </button>
+        <button type="button" class="btn" data-diff="hard" data-style="diffCard diffHard" aria-pressed="false">
+          <span><span class="name">HARD</span><span class="sub">1 life &middot; huge swarms</span></span>
+          <span class="tag">INTENSE</span>
+        </button>
+      </div>
+      <p id="diff-note" data-style="diffNote" aria-live="polite"></p>
+      <p data-style="hint">Best score: <strong id="menu-best">0</strong></p>
+
+      <div class="d-grid gap-2 mt-3">
+        <button id="btn-start" type="button" class="btn btn-lg" data-focus data-style="btnPrimary">Start game</button>
+        <button id="btn-howto" type="button" class="btn" data-style="btnGhost">How to play</button>
+      </div>
+      <p data-style="hint">Press Enter to start</p>
+    </div>
+  </section>
+
+  <!-- How to play -->
+  <section id="panel-howto" class="d-none" data-style="overlay" aria-labelledby="howto-title">
+    <div data-style="glass">
+      <p data-style="eyebrow">Quick guide</p>
+      <h2 id="howto-title" data-style="title titleSmall">How to play</h2>
+      <ol data-style="steps" class="p-0">
+        <li data-style="step"><span class="ico">1</span><span>Drag left or right on the screen, or use the arrow keys (or A and D), to move your cannon.</span></li>
+        <li data-style="step"><span class="ico">2</span><span><b>Auto fire</b> is on, so the cannon shoots by itself. Tap or hold the screen, or press <b>Space</b>, to shoot harder.</span></li>
+        <li data-style="step"><span class="ico">3</span><span>Destroy enemies before they reach you. Each one that gets through costs a life.</span></li>
+        <li data-style="step"><span class="ico">4</span><span>Kill enemies in a row to raise your score multiplier, up to x5.</span></li>
+        <li data-style="step"><span class="ico">5</span><span>Grab the glowing crystals for <b>triple shot</b>, <b>rapid fire</b>, a <b>shield</b> or an extra life.</span></li>
+      </ol>
+      <div class="d-grid gap-2 mt-4">
+        <button id="btn-howto-close" type="button" class="btn btn-lg" data-focus data-style="btnPrimary">Got it</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pause -->
+  <section id="panel-pause" class="d-none" data-style="overlay" role="dialog" aria-labelledby="pause-title">
+    <div data-style="glass">
+      <p data-style="eyebrow">Game paused</p>
+      <h2 id="pause-title" data-style="title titleSmall">Paused</h2>
+      <div class="d-grid gap-2 mt-4">
+        <button id="btn-resume" type="button" class="btn btn-lg" data-focus data-style="btnPrimary">Resume</button>
+        <button id="btn-quit" type="button" class="btn" data-style="btnGhost">Quit to menu</button>
+      </div>
+      <p data-style="hint">Press P to resume</p>
+    </div>
+  </section>
+
+  <!-- Game over -->
+  <section id="panel-over" class="d-none" data-style="overlay" role="dialog" aria-labelledby="over-title">
+    <div data-style="glass">
+      <p data-style="eyebrow">Mission over</p>
+      <h2 id="over-title" data-style="title titleSmall">Game over</h2>
+      <div id="over-score" data-style="bigScore">0</div>
+      <span id="over-newbest" class="d-none" data-style="badge">New best score</span>
+
+      <div data-style="statGrid">
+        <div data-style="statCard"><small>Enemies destroyed</small><strong id="over-kills">0</strong></div>
+        <div data-style="statCard"><small>Wave reached</small><strong id="over-wave">1</strong></div>
+        <div data-style="statCard"><small>Level</small><strong id="over-diff">Medium</strong></div>
+        <div data-style="statCard"><small>Best</small><strong id="over-best">0</strong></div>
+      </div>
+
+      <div class="d-grid gap-2">
+        <button id="btn-retry" type="button" class="btn btn-lg" data-focus data-style="btnPrimary">Play again</button>
+        <button id="btn-menu-over" type="button" class="btn" data-style="btnGhost">Change level</button>
+      </div>
+      <p data-style="hint">Press Enter to play again</p>
+    </div>
+  </section>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
